@@ -79,7 +79,8 @@ public class BookingServiceImpl implements BookingService{
                 bookingRequest.getCheckOutDate(), bookingRequest.getRoomsCount());
 
         BigDecimal priceForOneRoom = pricingService.calculateTotalPrice(inventoryList);
-        BigDecimal totalPrice = priceForOneRoom.multiply(BigDecimal.valueOf(bookingRequest.getRoomsCount()));
+        BigDecimal totalPrice = priceForOneRoom.multiply(BigDecimal.valueOf(bookingRequest.getRoomsCount()))
+                .setScale(2, RoundingMode.CEILING);
 
         Booking booking = Booking.builder()
                 .bookingStatus(BookingStatus.RESERVED)
@@ -114,9 +115,6 @@ public class BookingServiceImpl implements BookingService{
             throw new IllegalStateException("Booking has already expired");
         }
 
-        if(booking.getBookingStatus() != BookingStatus.RESERVED) {
-            throw new IllegalStateException("Booking is not under reserved state, cannot add guests");
-        }
 
         for (Long guestId: guestIdList) {
             Guest guest = guestRepository.findById(guestId)
@@ -219,7 +217,7 @@ public class BookingServiceImpl implements BookingService{
     }
 
     @Override
-    public BookingStatus getBookingStatus(Long bookingId) {
+    public BookingDto getBookingById(Long bookingId) {
         Booking booking = bookingRepository.findById(bookingId).orElseThrow(
                 () -> new ResourceNotFoundException("Booking not found with id: "+bookingId)
         );
@@ -228,7 +226,7 @@ public class BookingServiceImpl implements BookingService{
             throw new UnAuthorisedException("Booking does not belong to this user with id: "+user.getId());
         }
 
-        return booking.getBookingStatus();
+        return modelMapper.map(booking, BookingDto.class);
     }
 
     @Override

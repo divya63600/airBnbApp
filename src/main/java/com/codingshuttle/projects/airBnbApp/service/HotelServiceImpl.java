@@ -32,6 +32,7 @@ public class HotelServiceImpl implements HotelService{
     private final InventoryService inventoryService;
     private final RoomRepository roomRepository;
     private final InventoryRepository inventoryRepository;
+    private final PricingUpdateService pricingUpdateService;
 
     @Override
     public HotelDto createNewHotel(HotelDto hotelDto) {
@@ -115,11 +116,10 @@ public class HotelServiceImpl implements HotelService{
         }
 
         hotel.setActive(true);
+        hotelRepository.save(hotel);
 
-        // assuming only do it once
-        for(Room room: hotel.getRooms()) {
-            inventoryService.initializeRoomForAYear(room);
-        }
+        pricingUpdateService.updateHotelPrices(hotel);
+
     }
 
 //    public method

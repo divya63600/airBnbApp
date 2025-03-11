@@ -39,17 +39,38 @@ public class AuthController {
         String[] tokens = authService.login(loginDto);
 
         Cookie cookie = new Cookie("refreshToken", tokens[1]);
+        cookie.setPath("/");
+        cookie.setMaxAge(6 * 30 * 24 * 60 * 60);
         cookie.setHttpOnly(true);
 
         httpServletResponse.addCookie(cookie);
         return ResponseEntity.ok(new LoginResponseDto(tokens[0]));
     }
 
+    @PostMapping("/logout")
+    @Operation(summary = "Logout request", tags = {"Auth"})
+    public ResponseEntity<Void> logout(HttpServletResponse response, HttpServletRequest request) {
+        // Clear the refreshToken cookie
+        Cookie cookie = new Cookie("refreshToken", null);
+        cookie.setPath("/");
+        cookie.setMaxAge(0); // Expire immediately
+        cookie.setHttpOnly(true);
+        response.addCookie(cookie);
+
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping("/refresh")
     @Operation(summary = "Refresh the JWT with a refresh token", tags = {"Auth"})
     public ResponseEntity<LoginResponseDto> refresh(HttpServletRequest request) {
-        String refreshToken = Arrays.stream(request.getCookies()).
-                filter(cookie -> "refreshToken".equals(cookie.getName()))
+        Cookie[] cookies = request.getCookies(); // Get cookies
+
+        if (cookies == null) {
+            throw new AuthenticationServiceException("No cookies found in the request");
+        }
+
+        String refreshToken = Arrays.stream(cookies)
+                .filter(cookie -> "refreshToken".equals(cookie.getName()))
                 .findFirst()
                 .map(Cookie::getValue)
                 .orElseThrow(() -> new AuthenticationServiceException("Refresh token not found inside the Cookies"));

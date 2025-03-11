@@ -29,6 +29,7 @@ public class RoomServiceImpl implements RoomService{
     private final HotelRepository hotelRepository;
     private final InventoryService inventoryService;
     private final ModelMapper modelMapper;
+    private final PricingUpdateService pricingUpdateService;
 
     @Override
     public RoomDto createNewRoom(Long hotelId, RoomDto roomDto) {
@@ -46,9 +47,11 @@ public class RoomServiceImpl implements RoomService{
         room.setHotel(hotel);
         room = roomRepository.save(room);
 
-        if (hotel.getActive()) {
-            inventoryService.initializeRoomForAYear(room);
-        }
+//        if (hotel.getActive()) {
+//            inventoryService.initializeRoomForAYear(room);
+//        }
+        inventoryService.initializeRoomForAYear(room);
+        pricingUpdateService.updateHotelPrices(hotel);
 
         return modelMapper.map(room, RoomDto.class);
     }

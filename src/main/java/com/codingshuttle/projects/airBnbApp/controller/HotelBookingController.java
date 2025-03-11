@@ -8,7 +8,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -44,9 +43,9 @@ public class HotelBookingController {
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/{bookingId}/status")
-    @Operation(summary = "Check the status of the booking", tags = {"Booking Flow"})
-    public ResponseEntity<BookingStatusResponseDto> getBookingStatus(@PathVariable Long bookingId) {
-        return ResponseEntity.ok(new BookingStatusResponseDto(bookingService.getBookingStatus(bookingId)));
+    @GetMapping("/{bookingId}")
+    @Operation(summary = "Get the booking by Id", tags = {"Booking Flow"})
+    public ResponseEntity<BookingDto> getBookingById(@PathVariable Long bookingId) {
+        return ResponseEntity.ok(bookingService.getBookingById(bookingId));
     }
 }
