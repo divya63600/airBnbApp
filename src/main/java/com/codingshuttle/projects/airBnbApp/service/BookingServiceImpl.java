@@ -2,7 +2,7 @@ package com.codingshuttle.projects.airBnbApp.service;
 
 import com.codingshuttle.projects.airBnbApp.dto.BookingDto;
 import com.codingshuttle.projects.airBnbApp.dto.BookingRequest;
-import com.codingshuttle.projects.airBnbApp.dto.GuestDto;
+import com.codingshuttle.projects.airBnbApp.dto.BookingsTableResponseDto;
 import com.codingshuttle.projects.airBnbApp.dto.HotelReportDto;
 import com.codingshuttle.projects.airBnbApp.entity.*;
 import com.codingshuttle.projects.airBnbApp.entity.enums.BookingStatus;
@@ -20,7 +20,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +29,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -129,6 +129,43 @@ public class BookingServiceImpl implements BookingService{
 
     @Override
     @Transactional
+    public BookingDto removeGuestFromBooking(Long bookingId, List<Long> guestIdList) {
+
+        log.info("Removing guests with ids: {} from booking with id: {}", guestIdList, bookingId);
+
+        // Fetch the booking or throw an exception if not found
+        Booking booking = bookingRepository.findById(bookingId).orElseThrow(() ->
+                new ResourceNotFoundException("Booking not found with id: " + bookingId));
+
+        // Get the current user and verify ownership
+        User user = getCurrentUser();
+        if (!user.equals(booking.getUser())) {
+            throw new UnAuthorisedException("Booking does not belong to this user with id: " + user.getId());
+        }
+
+        // Check if the booking has expired
+        if (hasBookingExpired(booking)) {
+            throw new IllegalStateException("Booking has already expired");
+        }
+
+        // Validate and remove each guest
+        for (Long guestId : guestIdList) {
+            Guest guest = guestRepository.findById(guestId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Guest not found with id: " + guestId));
+            if (!booking.getGuests().remove(guest)) {
+                throw new IllegalStateException("Guest with id: " + guestId + " is not associated with this booking");
+            }
+        }
+
+        // Save the updated booking
+        booking = bookingRepository.save(booking);
+
+        // Map and return the updated booking as a DTO
+        return modelMapper.map(booking, BookingDto.class);
+    }
+
+    @Override
+    @Transactional
     public String initiatePayments(Long bookingId) {
         Booking booking = bookingRepository.findById(bookingId).orElseThrow(
                 () -> new ResourceNotFoundException("Booking not found with id: "+bookingId)
@@ -154,6 +191,7 @@ public class BookingServiceImpl implements BookingService{
     @Override
     @Transactional
     public void capturePayment(Event event) {
+        log.info("Capturing payment for the event: {}", event.getId());
         if ("checkout.session.completed".equals(event.getType())) {
             Session session = (Session) event.getDataObjectDeserializer().getObject().orElse(null);
             if (session == null) return;
@@ -230,7 +268,7 @@ public class BookingServiceImpl implements BookingService{
     }
 
     @Override
-    public List<BookingDto> getAllBookingsByHotelId(Long hotelId) {
+    public List<BookingsTableResponseDto> getAllBookingsByHotelId(Long hotelId) {
         Hotel hotel = hotelRepository.findById(hotelId).orElseThrow(() -> new ResourceNotFoundException("Hotel not " +
                 "found with ID: "+hotelId));
         User user = getCurrentUser();
@@ -239,10 +277,19 @@ public class BookingServiceImpl implements BookingService{
 
         if(!user.equals(hotel.getOwner())) throw new AccessDeniedException("You are not the owner of hotel with id: "+hotelId);
 
-        List<Booking> bookings = bookingRepository.findByHotel(hotel);
+        List<BookingStatus> statuses = Arrays.asList(
+                BookingStatus.CONFIRMED,
+                BookingStatus.CANCELLED,
+                BookingStatus.PAYMENTS_PENDING
+        );
+        List<Booking> bookings = bookingRepository.findByHotelAndBookingStatusInOrderByCreatedAtDesc(hotel, statuses);
 
         return bookings.stream()
-                .map((element) -> modelMapper.map(element, BookingDto.class))
+                .map((element) -> {
+                    var modified =  modelMapper.map(element, BookingsTableResponseDto.class);
+                    modified.setRoomType(element.getRoom().getType());
+                    return modified;
+                })
                 .collect(Collectors.toList());
     }
 
@@ -282,7 +329,11 @@ public class BookingServiceImpl implements BookingService{
     public List<BookingDto> getMyBookings() {
         User user = getCurrentUser();
 
-        return bookingRepository.findByUser(user)
+        List<BookingStatus> statuses = Arrays.asList(
+                BookingStatus.CONFIRMED,
+                BookingStatus.CANCELLED
+        );
+        return bookingRepository.findByUserAndBookingStatusIn(user, statuses)
                 .stream().
                 map((element) -> modelMapper.map(element, BookingDto.class))
                 .collect(Collectors.toList());

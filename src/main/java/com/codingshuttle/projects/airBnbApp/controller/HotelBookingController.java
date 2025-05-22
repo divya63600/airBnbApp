@@ -29,6 +29,13 @@ public class HotelBookingController {
         return ResponseEntity.ok(bookingService.addGuests(bookingId, guestIdList));
     }
 
+    @PostMapping("/{bookingId}/removeGuests")
+    @Operation(summary = "Remove a guest Id from the booking", tags = {"Booking Flow"})
+    public ResponseEntity<BookingDto> removeGuest(@PathVariable Long bookingId,
+                                                  @RequestBody List<Long> guestIdList) {
+        return ResponseEntity.ok(bookingService.removeGuestFromBooking(bookingId, guestIdList));
+    }
+
     @PostMapping("/{bookingId}/payments")
     @Operation(summary = "Initiate payments flow for the booking", tags = {"Booking Flow"})
     public ResponseEntity<BookingPaymentInitResponseDto> initiatePayment(@PathVariable Long bookingId) {

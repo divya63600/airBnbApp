@@ -1,6 +1,7 @@
 package com.codingshuttle.projects.airBnbApp.controller;
 
 import com.codingshuttle.projects.airBnbApp.dto.BookingDto;
+import com.codingshuttle.projects.airBnbApp.dto.BookingsTableResponseDto;
 import com.codingshuttle.projects.airBnbApp.dto.HotelDto;
 import com.codingshuttle.projects.airBnbApp.dto.HotelReportDto;
 import com.codingshuttle.projects.airBnbApp.entity.Hotel;
@@ -69,7 +70,7 @@ public class HotelController {
 
     @GetMapping("/{hotelId}/bookings")
     @Operation(summary = "Get all bookings of a hotel", tags = {"Admin Bookings"})
-    public ResponseEntity<List<BookingDto>> getAllBookingsByHotelId(@PathVariable Long hotelId) {
+    public ResponseEntity<List<BookingsTableResponseDto>> getAllBookingsByHotelId(@PathVariable Long hotelId) {
         return ResponseEntity.ok(bookingService.getAllBookingsByHotelId(hotelId));
     }
 
